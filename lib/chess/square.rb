@@ -13,5 +13,9 @@ module Chess
       @contents   = contents
       @threatened = false
     end
+
+    def to_s
+      @contents.to_s
+    end
   end
 end

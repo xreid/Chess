@@ -6,6 +6,14 @@ module Chess
       (bottom_left + top_left + top_right + bottom_right).delete_if(&:empty?)
     end
 
+    # Returns the unicode symbol for the chess piece
+    def  to_s
+      case @color
+      when :black then '♝'
+      when :white then '♗'
+      end
+    end
+
     private
 
     # Returns all diagonal moves towards the top left corner of the board

@@ -16,5 +16,14 @@ module Chess
         expect(subject.moves).to eq [[5, 4], [6, 4], [5, 3], [5, 5]]
       end
     end
+    describe '#to_s' do
+      subject { pawn.to_s }
+      context 'when black' do
+        it  { is_expected.to eq '♟' }
+      end
+      context 'when white' do
+        it  { pawn.color = :white; is_expected.to eq '♙' }
+      end
+    end
   end
 end

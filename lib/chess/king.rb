@@ -8,6 +8,14 @@ module Chess
         [right] + [bottom_right] + [bottom] + [bottom_left]).delete_if(&:empty?)
     end
 
+    # Returns the unicode symbol for the chess piece
+    def  to_s
+      case @color
+      when :black then '♚'
+      when :white then '♔'
+      end
+    end
+
     private
 
     # Returns the leftward move or an empty array if the king cannot move left.

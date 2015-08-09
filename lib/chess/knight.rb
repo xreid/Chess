@@ -5,6 +5,16 @@ module Chess
       left + top + right + bottom
     end
 
+    # Returns the unicode symbol for the chess piece
+    def  to_s
+      case @color
+      when :black then '♞'
+      when :white then '♘'
+      end
+    end
+
+    private
+
     def left
       result = []
       row, col = @position

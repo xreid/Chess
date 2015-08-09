@@ -14,5 +14,14 @@ module Chess
         ]
       end
     end
+    describe '#to_s' do
+      subject { knight.to_s }
+      context 'when black' do
+        it  { is_expected.to eq '♞' }
+      end
+      context 'when white' do
+        it  { knight.color = :white; is_expected.to eq '♘' }
+      end
+    end
   end
 end

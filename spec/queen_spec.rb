@@ -26,5 +26,14 @@ module Chess
         ]
       end
     end
+    describe '#to_s' do
+      subject { queen.to_s }
+      context 'when black' do
+        it  { is_expected.to eq '♛' }
+      end
+      context 'when white' do
+        it  { queen.color = :white; is_expected.to eq '♕' }
+      end
+    end
   end
 end

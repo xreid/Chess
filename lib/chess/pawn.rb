@@ -24,5 +24,13 @@ module Chess
     def first_move?
       @first_move
     end
+
+    # Returns the unicode symbol for the chess piece
+    def  to_s
+      case @color
+      when :black then '♟'
+      when :white then '♙'
+      end
+    end
   end
 end
