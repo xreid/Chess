@@ -2,8 +2,20 @@ module Chess
   # Represents a bishop in chess
   class Bishop < ChessPiece
     # Returns all possible moves a bishop can make from its current position
-    def moves
-      (bottom_left + top_left + top_right + bottom_right).delete_if(&:empty?)
+    def moves(direction = :all)
+      case direction
+      when :all
+        (bottom_left + top_left + top_right + bottom_right).delete_if(&:empty?)
+      when :bottom_left  then bottom_left
+      when :top_left     then top_left
+      when :top_right    then top_right
+      when :bottom_right then bottom_right
+      end
+    end
+
+    # all directions this piece can move in
+    def directions
+      [:bottom_left, :top_left, :top_right, :bottom_right]
     end
 
     # Returns the unicode symbol for the chess piece

@@ -1,8 +1,15 @@
 module Chess
   # Represents a queen in chess
   class Queen < ChessPiece
-    def moves
-      Rook.new(@color, @position).moves + Bishop.new(@color, @position).moves
+    def moves(direction = :all)
+      Rook.new(@color, @position).moves(direction) +
+        Bishop.new(@color, @position).moves(direction)
+    end
+
+    # all directions this piece can move in
+    def directions
+      Rook.new(@color, @position).directions +
+        Bishop.new(@color, @position).rections
     end
 
     def  to_s

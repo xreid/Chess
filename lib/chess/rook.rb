@@ -1,8 +1,20 @@
 module Chess
   # Represents a rook in chess
   class Rook < ChessPiece
-    def moves
-      (left + top + right + bottom).delete_if(&:empty?)
+    def moves(direction = :all)
+      case direction
+      when :all
+        (left + top + right + bottom).delete_if(&:empty?)
+      when :left   then left
+      when :top    then top
+      when :right  then right
+      when :bottom then bottom
+      end
+    end
+
+    # all directions this piece can move in
+    def directions
+      [:left, :top, :right, :bottom]
     end
 
     def  to_s

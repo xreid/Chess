@@ -1,4 +1,5 @@
 require_relative 'chess/version'
+require_relative 'chess/exceptions'
 require_relative 'chess/chess_piece'
 require_relative 'chess/bishop'
 require_relative 'chess/board'
