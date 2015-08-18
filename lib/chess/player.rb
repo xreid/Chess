@@ -7,5 +7,10 @@ module Chess
       @name = name
       @color = color
     end
+
+    def to_s
+      @name.to_s
+    end
+
   end
 end

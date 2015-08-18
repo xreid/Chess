@@ -1,12 +1,13 @@
 module Chess
   describe Board do
     subject { board }
+    let(:squares) { board.squares }
     let(:board) { Board.new }
+    let(:eli) { Player.new(:eli, :white) }
+    let(:ada) { Player.new(:ada, :black) }
     it { is_expected.to be_a Board }
     it { puts subject }
     describe '#move' do
-      let(:eli) { Player.new(:eli, :white) }
-      let(:ada) { Player.new(:ada, :black) }
       context "when attempting to move the opponent's piece" do
         it 'raises a PieceOwnershipError' do
           expect { subject.move([1, 1], [2, 1], eli) }.to(
@@ -63,6 +64,53 @@ module Chess
         expect(board.squares[0][0].contents).to eq ' '
         expect(board.squares[2][0].contents).to be_a Rook
       end
+      it 'moves a white rook forward' do
+        expect(board.squares[0][0].contents).to be_a Rook
+        expect(board.squares[2][0].contents).to eq ' '
+        board.move([6, 0], [4, 0], eli)
+        board.move([7, 0], [5, 0], eli)
+        expect(board.squares[7][0].contents).to eq ' '
+        expect(board.squares[5][0].contents).to be_a Rook
+      end
     end
+    describe '#check_mate?' do
+      subject { board.check_mate? }
+      context 'when no king is check mated' do
+        it { is_expected.to be_falsey }
+      end
+      context 'when the black king is check mated' do
+        it do
+          white_king = squares[7][3].contents
+          board.move([6, 2], [4, 2], eli)
+          board.move([1, 3], [2, 3], ada)
+          board.move([6, 1], [4, 1], eli)
+          board.move([0, 4], [4, 0], ada)
+          is_expected.to eq white_king
+        end
+      end
+    end
+    # describe '#add_threats' do
+    #   it 'adds all threats to squares in range' do
+    #     expect(squares[2][0].threats).to eq []
+    #     pawn = squares[1][0].contents
+    #     board.add_threats(pawn)
+    #     expect(squares[2][0].threats).to eq [pawn]
+    #     expect(squares[3][0].threats).to eq [pawn]
+    #     expect(squares[2][1].threats).to eq [pawn]
+    #   end
+    # end
+    # describe '#remove_threats' do
+    #   it 'removes all threats to squares in range' do
+    #     pawn = squares[1][0].contents
+    #     board.add_threats(pawn)
+    #     expect(squares[2][0].threats).to eq [pawn]
+    #     expect(squares[3][0].threats).to eq [pawn]
+    #     expect(squares[2][1].threats).to eq [pawn]
+    #     board.remove_threats(pawn)
+    #     expect(squares[2][0].threats).to eq []
+    #     expect(squares[3][0].threats).to eq []
+    #     expect(squares[2][1].threats).to eq []
+    #   end
+    # end
   end
 end

@@ -1,6 +1,12 @@
 module Chess
   # Represents a knight in chess
   class Knight < ChessPiece
+
+    def initialize(color, position)
+      super(color, position)
+      @name = :knight
+    end
+
     def moves(direction = :all)
       case direction
       when :all
@@ -8,13 +14,17 @@ module Chess
       when :left   then left
       when :top    then top
       when :right  then right
-      when :bototm then bototm
+      when :bottom then bottom
       end
     end
 
     # all directions this piece can move in
-    def directions
+    def self.directions
       [:left, :top, :right, :bottom]
+    end
+
+    def directions
+      Knight.directions
     end
 
     # Returns the unicode symbol for the chess piece

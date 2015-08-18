@@ -1,6 +1,12 @@
 module Chess
   # Represents a rook in chess
   class Rook < ChessPiece
+
+    def initialize(color, position)
+      super(color, position)
+      @name = :rook
+    end
+
     def moves(direction = :all)
       case direction
       when :all
@@ -13,8 +19,12 @@ module Chess
     end
 
     # all directions this piece can move in
-    def directions
+    def self.directions
       [:left, :top, :right, :bottom]
+    end
+
+    def directions
+      Rook.directions
     end
 
     def  to_s

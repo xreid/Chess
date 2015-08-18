@@ -1,6 +1,12 @@
 module Chess
   # Represents a king in chess
   class King < ChessPiece
+
+    def initialize(color, position)
+      super(color, position)
+      @name = :king
+    end
+
     # Returns all possible moves a king can make from its current position
     # A king may move one square in any direction
     def moves(direction = :all)
@@ -19,8 +25,12 @@ module Chess
       end
     end
 
-    # all directions this piece can move in
     def directions
+      King.directions
+    end
+
+    # all directions this piece can move in
+    def self.directions
       [
         :left, :top_left, :top, :top_right, :right,
         :bottom_right, :bottom, :bottom_left

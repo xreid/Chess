@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+require 'chess'
+
+module Chess
+  game = Game.new
+  game.play
+end

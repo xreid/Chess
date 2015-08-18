@@ -1,8 +1,18 @@
+require_relative 'square'
+require_relative 'exceptions'
+require_relative 'chess_piece/bishop'
+require_relative 'chess_piece/king'
+require_relative 'chess_piece/knight'
+require_relative 'chess_piece/pawn'
+require_relative 'chess_piece/queen'
+require_relative 'chess_piece/rook'
+
 module Chess
   # Represents a board in chess
   class Board
     # An array made up of Chess::Square's representing the chess board.
     attr_accessor :squares
+
     # top border for the board
     TOP       = "\n    A   B   C   D   E   F   G   H"\
                 "\n   -------------------------------"
@@ -14,6 +24,7 @@ module Chess
 
     def initialize
       @squares = new_board
+      pieces.each { |_name, piece| add_threats(piece) }
     end
 
     # Moves a piece from one position to another.
@@ -26,29 +37,64 @@ module Chess
       fail_move_errors(position_1, position_2, player)
       row, col = position_1
       piece = @squares[row][col].contents
+      piece.first_move = false if piece.is_a? Pawn
+      remove_threats(piece)
       piece.position = position_2
       @squares[row][col].contents = ' '
       row, col = position_2
+      if @squares[row][col].contents.is_a? ChessPiece
+        remove_threats(@squares[row][col].contents)
+      end
       @squares[row][col].contents = piece
+      add_threats(piece)
+
     end
 
-    # Removes piece from the threatened attribure of any square it threatens
-    def remove_threats(piece)
-      picee.moves.each do |position|
-        row, col = position
-        @squares[row][col].threats -= [piece]
-      end
+    def checked?
+      black_king = pieces['black_king']
+      white_king = pieces['white_king']
+      return false if black_king.nil? || white_king.nil?
+      row, col = black_king.position
+      return black_king if @squares[row][col].threatened?(black_king)
+      row, col = white_king.position
+      return white_king if @squares[row][col].threatened?(white_king)
+      false
     end
-    # Adds piece to the threatened attribute of each square in range of piece
-    def add_threats(piece)
-      picee.moves.each do |position|
-        row, col = position
-        @squares[row][col].threats << piece
+
+    # Returns the check mated king or false if niether king is in check mate
+    def check_mate?
+      black_king = pieces['black_king']
+      white_king = pieces['white_king']
+      return false if black_king.nil? || white_king.nil?
+      return black_king unless safe_moves?(black_king) ||
+        enclosed?(black_king) ||
+        safe_from_threats?(black_king)
+      return white_king unless safe_moves?(white_king) ||
+        enclosed?(white_king) ||
+        safe_from_threats?(white_king)
+      false
+    end
+
+    def pieces
+      result = {}
+      @squares.each do |row|
+        row.each do |square|
+          next if square.contents == ' '
+          piece = square.contents
+          key = piece.color.to_s + '_' + piece.name.to_s
+          result[key] = piece
+        end
       end
+      result
+    end
+
+    def winner
+      pieces['black_king'].nil? ? pieces['white_king'] : pieces['black_king']
     end
 
     def to_s
       draw
+      ''
     end
 
     private
@@ -67,6 +113,129 @@ module Chess
       puts BOTTOM
     end
 
+    def safe_moves?(piece)
+      if piece.moves.any? do |move|
+        row, col = move
+        square   = @squares[row][col]
+        square.empty? && !(square.threatened?(piece))
+      end
+        return true
+      end
+      false
+    end
+
+    def enclosed?(king)
+      if king.moves.all? { |move| @squares[move[0]][move[1]].friendly?(king) }
+        return true
+      end
+      false
+    end
+
+    def safe_from_threats?(piece)
+      row, col = piece.position
+      threats = @squares[row][col].threats
+      threats.all? do |threat|
+        next if threat.color == piece.color
+        row, col = threat.position
+        @squares[row][col].threats.any? { |t| t.color == piece.color }
+      end
+    end
+
+    # Adds piece to the threats attribute of each square in range of piece
+    def add_threats(piece)
+      piece.directions.each do |direction|
+        piece.moves(direction).each do |position|
+          next if position == []
+          row, col = position
+          break if @squares[row][col].friendly?(piece) unless piece.is_a? Knight
+          @squares[row][col].threats << piece
+          break unless @squares[row][col].empty? unless piece.is_a? Knight
+        end
+      end
+    end
+
+    # Removes piece from the threats attribure of any square it threatens
+    def remove_threats(piece)
+      row, col = piece.position
+      @squares[row][col].threats -= [piece]
+      piece.moves.each do |position|
+        row, col = position
+        @squares[row][col].threats -= [piece]
+      end
+    end
+
+    # returns true if the square at position is not under threat from an enemy
+    # piece
+    def threatened?(king, position)
+      square = @squares[position[0]][position[1]]
+      square.threats.any? { |threat| threat.color == king.enemy_color }
+    end
+
+    # Fails all errors fot #move
+    def fail_move_errors(position_1, position_2, player)
+      direction           = move_direction(position_1, position_2)
+      piece               = (@squares[position_1[0]][position_1[1]]).contents
+      new_square_contents = (@squares[position_2[0]][position_2[1]]).contents
+      fail EmptySquareError    unless piece.is_a? ChessPiece
+      fail PieceOwnershipError unless piece.color == player.color
+      if new_square_contents.is_a? ChessPiece
+        fail TeamKillError if new_square_contents.color == piece.color
+      end
+      # fail_checked_king_error(player, piece)
+      fail IllegalMoveError    unless piece.moves.include?(position_2)
+      fail_path_error(piece, direction, position_2) unless piece.is_a? Knight
+      fail_pawn_errors(piece, position_2)           if piece.is_a? Pawn
+      if piece.is_a? King
+        fail ThreatenedSquareError if threatened?(piece, position_2)
+      end
+    end
+
+    def fail_checked_king_error(player, piece)
+      king = pieces[player.color.to_s + '_king']
+      fail CheckedKingError if king == checked? && !(piece.is_a? King)
+    end
+
+    def fail_pawn_errors(pawn, new_positoin)
+      row, col = new_positoin
+      if pawn.position[1] != col && (@squares[row][col]).contents == ' '
+        fail IllegalMoveError
+      elsif @squares[row][col].contents.is_a? ChessPiece
+        fail IllegalMoveError if pawn.position[1] - col == 0
+      end
+    end
+
+    def move_direction(position_1, position_2)
+      row_comparison = position_2[0] - position_1[0]
+      col_comparison = position_2[1] - position_1[1]
+      if row_comparison > 0 && col_comparison < 0
+        :bottom_left
+      elsif row_comparison > 0 && col_comparison > 0
+        :bottom_right
+      elsif row_comparison > 0
+        :bottom
+      elsif row_comparison < 0 && col_comparison < 0
+        :top_left
+      elsif row_comparison < 0 && col_comparison > 0
+        :top_right
+      elsif row_comparison < 0
+        :top
+      elsif row_comparison == 0 && col_comparison < 0
+        :left
+      elsif row_comparison == 0 && col_comparison > 0
+        :right
+      end
+    end
+
+    def fail_path_error(piece, direction, destination)
+      index = piece.moves(direction).index(destination)
+      if piece.moves(direction)[0..index].any? do |position|
+        next if position == destination
+        @squares[position[0]][position[1]].contents.is_a? ChessPiece
+      end
+        fail BlockedPathError
+      end
+    end
+
     # Constructs a new chess board
     def new_board
       [
@@ -83,7 +252,7 @@ module Chess
         [
           Square.new(Pawn.new(:black, [1, 0])),
           Square.new(Pawn.new(:black, [1, 1])),
-          Square.new(Pawn.new(:black, [1, 1])),
+          Square.new(Pawn.new(:black, [1, 2])),
           Square.new(Pawn.new(:black, [1, 3])),
           Square.new(Pawn.new(:black, [1, 4])),
           Square.new(Pawn.new(:black, [1, 5])),
@@ -127,60 +296,6 @@ module Chess
           Square.new(Rook.new(:white,   [7, 7]))
         ]
       ]
-    end
-
-    # Fails all errors fot #move
-    def fail_move_errors(position_1, position_2, player)
-      direction = move_direction(position_1, position_2)
-      piece = (@squares[position_1[0]][position_1[1]]).contents
-      fail EmptySquareError    unless piece.is_a? ChessPiece
-      fail PieceOwnershipError unless piece.color == player.color
-      fail IllegalMoveError    unless piece.moves.include?(position_2)
-      fail_path_error(piece, direction, position_2) unless piece.is_a? Knight
-      fail_pawn_move_errors(piece, position_2)          if piece.is_a? Pawn
-      new_square_contents = (@squares[position_2[0]][position_2[1]]).contents
-      if new_square_contents.is_a? ChessPiece
-        fail TeamKillError if new_square_contents.color == piece.color
-      end
-    end
-
-    def fail_pawn_move_errors(pawn, new_positoin)
-      row, col = new_positoin
-      if pawn.position[1] != col && (@squares[row][col]).contents == ' '
-        fail IllegalMoveError
-      end
-    end
-
-    def move_direction(position_1, position_2)
-      row_comparison = position_2[0] - position_1[0]
-      col_comparison = position_2[1] - position_1[1]
-      if row_comparison > 0 && col_comparison < 0
-        :bottom_left
-      elsif row_comparison > 0 && col_comparison > 0
-        :bottom_right
-      elsif row_comparison > 0
-        :bottom
-      elsif row_comparison < 0 && col_comparison < 0
-        :top_left
-      elsif row_comparison < 0 && col_comparison > 0
-        :top_right
-      elsif row_comparison < 0
-        :top
-      elsif row_comparison == 0 && col_comparison < 0
-        :left
-      elsif row_comparison == 0 && col_comparison > 0
-        :right
-      end
-    end
-
-    def fail_path_error(piece, direction, destination)
-      index = piece.moves(direction).index(destination)
-      if piece.moves(direction)[0..index].any? do |position|
-        next if position == destination
-        @squares[position[0]][position[1]].contents.is_a? ChessPiece
-      end
-        fail BlockedPathError
-      end
     end
   end
 end

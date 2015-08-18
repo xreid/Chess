@@ -1,6 +1,14 @@
+require_relative '../chess_piece'
+
 module Chess
   # Represents a bishop in chess
   class Bishop < ChessPiece
+
+    def initialize(color, position)
+      super(color, position)
+      @name = :bishop
+    end
+
     # Returns all possible moves a bishop can make from its current position
     def moves(direction = :all)
       case direction
@@ -14,8 +22,12 @@ module Chess
     end
 
     # all directions this piece can move in
-    def directions
+    def self.directions
       [:bottom_left, :top_left, :top_right, :bottom_right]
+    end
+
+    def directions
+      Bishop.directions
     end
 
     # Returns the unicode symbol for the chess piece
