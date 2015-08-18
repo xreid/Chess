@@ -2,19 +2,21 @@ require_relative 'board'
 require_relative 'player'
 module Chess
   class Game
-    attr_accessor :board, :players, :turn
+    attr_accessor :board, :players, :turn, :resign, :save
     MAP = { a: 0, b: 1, c: 2, d: 3, e: 4, f: 5, g: 6, h: 7 }
 
     def initialize(players = nil)
       @board = Board.new
       @turn  = 0
+      @resign = false
+      @save = false
     end
 
     def play
       welcome
       @players = get_players
       puts @board
-      until @board.check_mate? || slayed_king?
+      until @board.check_mate? || slayed_king? || @resign || @save
         player = @players[@turn % 2]
         prompt(player)
         get_response(player)
@@ -22,9 +24,15 @@ module Chess
         puts 'Check!' if @board.checked?
         @turn += 1
       end
-      winner = @board.winner.color
-      player = winner == players[0].color ? players[0] : players[1]
-      goodbye(player)
+      if @board.check_mate? || slayed_king?
+        winner = @board.winner.color
+        player = winner == players[0].color ? players[0] : players[1]
+        goodbye(player)
+      elsif @resign
+        winner = players[turn % 2]
+        goodbye(winner)
+      elsif @save
+      end
     end
 
     private
@@ -35,7 +43,7 @@ module Chess
       puts "\nenter two squares separated by a"
       puts "space to move (e.g.'a2 a4' to move the"
       puts "left most white pawn forward two squares)"
-      puts "\nR to resign\nS to save\n"
+      puts "\nR to resign\n"
     end
 
     def goodbye(player)
@@ -59,8 +67,8 @@ module Chess
     def get_response(player)
       begin
         response = gets.chomp.downcase
-        resign if response == 'r'
-        save   if response == 's'
+        return @resign = true if response == 'r'
+        return @save   = true if response == 's'
         fail InvalidInputError unless response =~ /^[a-h][1-8] [a-h][1-8]$/
         response = route(response)
         @board.move(response[0], response[1], player)
@@ -69,15 +77,6 @@ module Chess
         puts error.message
         retry
       end
-    end
-
-    def resign
-      @turn += 1
-      goodbye(players[@turn % 2])
-    end
-
-    def save
-      puts 'Game Saved!'
     end
 
     def route(coordinates)
