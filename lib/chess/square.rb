@@ -27,6 +27,10 @@ module Chess
       false
     end
 
+    def enemy_threats(piece = @contents)
+      @threats.select { |threat| threat.color == piece.color }
+    end
+
     def threatened?(piece)
       return true if @threats.any? { |threat| threat.color != piece.color }
       false

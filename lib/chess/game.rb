@@ -24,6 +24,8 @@ module Chess
         puts 'Check!' if @board.checked?
         @turn += 1
       end
+      p @board.check_mate?
+      p slayed_king?
       if @board.check_mate? || slayed_king?
         winner = @board.winner.color
         player = winner == players[0].color ? players[0] : players[1]

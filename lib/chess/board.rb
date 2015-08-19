@@ -46,8 +46,12 @@ module Chess
         remove_threats(@squares[row][col].contents)
       end
       @squares[row][col].contents = piece
+      # update threats whose path may be blocked after the move is made
+      @squares[row][col].threats.each do |threat|
+        remove_threats(threat)
+        add_threats(threat)
+      end
       add_threats(piece)
-
     end
 
     def checked?
@@ -66,12 +70,18 @@ module Chess
       black_king = pieces['black_king']
       white_king = pieces['white_king']
       return false if black_king.nil? || white_king.nil?
-      return black_king unless safe_moves?(black_king) ||
-        enclosed?(black_king) ||
-        safe_from_threats?(black_king)
-      return white_king unless safe_moves?(white_king) ||
-        enclosed?(white_king) ||
-        safe_from_threats?(white_king)
+      row, col = black_king.position
+      if @squares[row][col].threatened?(black_king)
+        return black_king unless safe_moves?(black_king) ||
+          enclosed?(black_king) ||
+          safe_from_threats?(black_king)
+      end
+      row, col = white_king.position
+      if @squares[row][col].threatened?(white_king)
+        return white_king unless safe_moves?(white_king) ||
+          enclosed?(white_king) ||
+          safe_from_threats?(white_king)
+      end
       false
     end
 
@@ -113,6 +123,7 @@ module Chess
       puts BOTTOM
     end
 
+    # returns true if the piece can move to an unthreatened square
     def safe_moves?(piece)
       if piece.moves.any? do |move|
         row, col = move
@@ -124,6 +135,7 @@ module Chess
       false
     end
 
+    # returns true if a king is surrounded by friendly pieces
     def enclosed?(king)
       if king.moves.all? { |move| @squares[move[0]][move[1]].friendly?(king) }
         return true
@@ -131,13 +143,17 @@ module Chess
       false
     end
 
-    def safe_from_threats?(piece)
-      row, col = piece.position
-      threats = @squares[row][col].threats
-      threats.all? do |threat|
-        next if threat.color == piece.color
-        row, col = threat.position
-        @squares[row][col].threats.any? { |t| t.color == piece.color }
+    # returns true if a threatened piece's threats can be captured
+    def safe_from_threats?(king)
+      king_square = @squares[king.position[0]][king.position[1]]
+      return true if king_square.enemy_threats.empty?
+      king.moves.all? do |move|
+        square = @squares[move[0]][move[1]]
+        next unless square.empty?
+        square.threats.any? { |t| t.color == king.color }
+      end
+      king_square.enemy_threats.all? do |threat|
+        threat.threats.any? { |t| t.color == king.color}
       end
     end
 
@@ -171,39 +187,7 @@ module Chess
       square.threats.any? { |threat| threat.color == king.enemy_color }
     end
 
-    # Fails all errors fot #move
-    def fail_move_errors(position_1, position_2, player)
-      direction           = move_direction(position_1, position_2)
-      piece               = (@squares[position_1[0]][position_1[1]]).contents
-      new_square_contents = (@squares[position_2[0]][position_2[1]]).contents
-      fail EmptySquareError    unless piece.is_a? ChessPiece
-      fail PieceOwnershipError unless piece.color == player.color
-      if new_square_contents.is_a? ChessPiece
-        fail TeamKillError if new_square_contents.color == piece.color
-      end
-      # fail_checked_king_error(player, piece)
-      fail IllegalMoveError    unless piece.moves.include?(position_2)
-      fail_path_error(piece, direction, position_2) unless piece.is_a? Knight
-      fail_pawn_errors(piece, position_2)           if piece.is_a? Pawn
-      if piece.is_a? King
-        fail ThreatenedSquareError if threatened?(piece, position_2)
-      end
-    end
-
-    def fail_checked_king_error(player, piece)
-      king = pieces[player.color.to_s + '_king']
-      fail CheckedKingError if king == checked? && !(piece.is_a? King)
-    end
-
-    def fail_pawn_errors(pawn, new_positoin)
-      row, col = new_positoin
-      if pawn.position[1] != col && (@squares[row][col]).contents == ' '
-        fail IllegalMoveError
-      elsif @squares[row][col].contents.is_a? ChessPiece
-        fail IllegalMoveError if pawn.position[1] - col == 0
-      end
-    end
-
+    # returns the direction  of a move from position_1 to position_2
     def move_direction(position_1, position_2)
       row_comparison = position_2[0] - position_1[0]
       col_comparison = position_2[1] - position_1[1]
@@ -223,16 +207,6 @@ module Chess
         :left
       elsif row_comparison == 0 && col_comparison > 0
         :right
-      end
-    end
-
-    def fail_path_error(piece, direction, destination)
-      index = piece.moves(direction).index(destination)
-      if piece.moves(direction)[0..index].any? do |position|
-        next if position == destination
-        @squares[position[0]][position[1]].contents.is_a? ChessPiece
-      end
-        fail BlockedPathError
       end
     end
 
@@ -296,6 +270,49 @@ module Chess
           Square.new(Rook.new(:white,   [7, 7]))
         ]
       ]
+    end
+
+    # Fails all errors fot #move
+    def fail_move_errors(position_1, position_2, player)
+      direction           = move_direction(position_1, position_2)
+      piece               = (@squares[position_1[0]][position_1[1]]).contents
+      new_square_contents = (@squares[position_2[0]][position_2[1]]).contents
+      fail EmptySquareError    unless piece.is_a? ChessPiece
+      fail PieceOwnershipError unless piece.color == player.color
+      if new_square_contents.is_a? ChessPiece
+        fail TeamKillError if new_square_contents.color == piece.color
+      end
+      # fail_checked_king_error(player, piece)
+      fail IllegalMoveError    unless piece.moves.include?(position_2)
+      fail_path_error(piece, direction, position_2) unless piece.is_a? Knight
+      fail_pawn_errors(piece, position_2)           if piece.is_a? Pawn
+      if piece.is_a? King
+        fail ThreatenedSquareError if threatened?(piece, position_2)
+      end
+    end
+
+    def fail_checked_king_error(player, piece)
+      king = pieces[player.color.to_s + '_king']
+      fail CheckedKingError if king == checked? && !(piece.is_a? King)
+    end
+
+    def fail_pawn_errors(pawn, new_positoin)
+      row, col = new_positoin
+      if pawn.position[1] != col && (@squares[row][col]).contents == ' '
+        fail IllegalMoveError
+      elsif @squares[row][col].contents.is_a? ChessPiece
+        fail IllegalMoveError if pawn.position[1] - col == 0
+      end
+    end
+
+    def fail_path_error(piece, direction, destination)
+      index = piece.moves(direction).index(destination)
+      if piece.moves(direction)[0..index].any? do |position|
+        next if position == destination
+        @squares[position[0]][position[1]].contents.is_a? ChessPiece
+      end
+        fail BlockedPathError
+      end
     end
   end
 end

@@ -89,28 +89,5 @@ module Chess
         end
       end
     end
-    # describe '#add_threats' do
-    #   it 'adds all threats to squares in range' do
-    #     expect(squares[2][0].threats).to eq []
-    #     pawn = squares[1][0].contents
-    #     board.add_threats(pawn)
-    #     expect(squares[2][0].threats).to eq [pawn]
-    #     expect(squares[3][0].threats).to eq [pawn]
-    #     expect(squares[2][1].threats).to eq [pawn]
-    #   end
-    # end
-    # describe '#remove_threats' do
-    #   it 'removes all threats to squares in range' do
-    #     pawn = squares[1][0].contents
-    #     board.add_threats(pawn)
-    #     expect(squares[2][0].threats).to eq [pawn]
-    #     expect(squares[3][0].threats).to eq [pawn]
-    #     expect(squares[2][1].threats).to eq [pawn]
-    #     board.remove_threats(pawn)
-    #     expect(squares[2][0].threats).to eq []
-    #     expect(squares[3][0].threats).to eq []
-    #     expect(squares[2][1].threats).to eq []
-    #   end
-    # end
   end
 end
