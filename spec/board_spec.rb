@@ -85,6 +85,7 @@ module Chess
           board.move([1, 3], [2, 3], ada)
           board.move([6, 1], [4, 1], eli)
           board.move([0, 4], [4, 0], ada)
+          p squares[7][3]
           is_expected.to eq white_king
         end
       end

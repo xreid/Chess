@@ -22,8 +22,8 @@ module Chess
     # horizontal separators for the board
     SEPARATOR = "\n  |---+---+---+---+---+---+---+---|"
 
-    def initialize
-      @squares = new_board
+    def initialize(board = new_board)
+      @squares = board
       pieces.each { |_name, piece| add_threats(piece) }
     end
 
@@ -67,17 +67,24 @@ module Chess
 
     # Returns the check mated king or false if niether king is in check mate
     def check_mate?
+      puts self
       black_king = pieces['black_king']
       white_king = pieces['white_king']
       return false if black_king.nil? || white_king.nil?
       row, col = black_king.position
       if @squares[row][col].threatened?(black_king)
+        p safe_moves?(black_king)
+        p enclosed?(black_king)
+        p safe_from_threats?(black_king)
         return black_king unless safe_moves?(black_king) ||
           enclosed?(black_king) ||
           safe_from_threats?(black_king)
       end
       row, col = white_king.position
       if @squares[row][col].threatened?(white_king)
+        p safe_moves?(white_king)
+        p enclosed?(white_king)
+        p safe_from_threats?(white_king)
         return white_king unless safe_moves?(white_king) ||
           enclosed?(white_king) ||
           safe_from_threats?(white_king)
@@ -146,6 +153,10 @@ module Chess
     # returns true if a threatened piece's threats can be captured
     def safe_from_threats?(king)
       king_square = @squares[king.position[0]][king.position[1]]
+      puts 'empty threats'
+      p king_square
+      p king_square.enemy_threats
+      p king_square.enemy_threats.empty?
       return true if king_square.enemy_threats.empty?
       king.moves.all? do |move|
         square = @squares[move[0]][move[1]]
@@ -153,7 +164,8 @@ module Chess
         square.threats.any? { |t| t.color == king.color }
       end
       king_square.enemy_threats.all? do |threat|
-        threat.threats.any? { |t| t.color == king.color}
+        square = @squares[threat.position[0]][threat.position[1]]
+        square.threats.any? { |t| t.color == king.color}
       end
     end
 
@@ -164,7 +176,13 @@ module Chess
           next if position == []
           row, col = position
           break if @squares[row][col].friendly?(piece) unless piece.is_a? Knight
-          @squares[row][col].threats << piece
+          unless piece.is_a? Pawn
+            @squares[row][col].threats << piece
+          else
+           if @squares[row][col].empty? || !([:top, :bottom].include?(direction))
+              @squares[row][col].threats << piece
+            end
+          end
           break unless @squares[row][col].empty? unless piece.is_a? Knight
         end
       end

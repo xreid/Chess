@@ -28,7 +28,7 @@ module Chess
     end
 
     def enemy_threats(piece = @contents)
-      @threats.select { |threat| threat.color == piece.color }
+      @threats.select { |threat| threat.color != piece.color }
     end
 
     def threatened?(piece)
