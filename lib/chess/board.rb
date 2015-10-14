@@ -32,8 +32,8 @@ module Chess
     # Params:
     # +position_1+:: The current position of the piece to be moved
     # +position_2+:: The position the piece will be moved to
-    # +player+:: The player attempting to move the piece
-    def move(position_1, position_2, player)
+    # +player+::     The player attempting to move the piece
+    def move!(position_1, position_2, player)
       fail_move_errors(position_1, position_2, player)
       row, col = position_1
       piece = @squares[row][col].contents
@@ -54,6 +54,49 @@ module Chess
       add_threats(piece)
     end
 
+    # does not mutate the Board
+    def move(position_1, position_2, player)
+      board = Marshal.load(Marshal.dump(self))
+      board.fail_move_errors(position_1, position_2, player)
+      row, col = position_1
+      piece = board.squares[row][col].contents
+      piece.first_move = false if piece.is_a? Pawn
+      board.remove_threats(piece)
+      piece.position = position_2
+      board.squares[row][col].contents = ' '
+      row, col = position_2
+      if board.squares[row][col].contents.is_a? ChessPiece
+        board.remove_threats(board.squares[row][col].contents)
+      end
+      board.squares[row][col].contents = piece
+      # update threats whose path may be blocked after the move is made
+      board.squares[row][col].threats.each do |threat|
+        board.remove_threats(threat)
+        board.add_threats(threat)
+      end
+      board.add_threats(piece)
+      board
+    end
+
+    def ai_move(player, ai_player)
+      print 'thinking'
+      start_time = Time.now
+      best_piece = nil
+      best_move = nil
+      depth = 1
+      # TODO timer should be within minimax
+      until Time.now - start_time > 3
+        print " . "
+        result = minimax(depth, -1.0/0.0, 1.0/0.0, player, ai_player, true)
+        # puts "\n"
+        # puts result
+        best_piece = result[1]
+        best_move = result[2]
+        depth += 1
+      end
+      move!(best_piece.position, best_move, ai_player)
+    end
+
     def checked?
       black_king = pieces['black_king']
       white_king = pieces['white_king']
@@ -67,24 +110,17 @@ module Chess
 
     # Returns the check mated king or false if niether king is in check mate
     def check_mate?
-      puts self
       black_king = pieces['black_king']
       white_king = pieces['white_king']
       return false if black_king.nil? || white_king.nil?
       row, col = black_king.position
       if @squares[row][col].threatened?(black_king)
-        p safe_moves?(black_king)
-        p enclosed?(black_king)
-        p safe_from_threats?(black_king)
         return black_king unless safe_moves?(black_king) ||
           enclosed?(black_king) ||
           safe_from_threats?(black_king)
       end
       row, col = white_king.position
       if @squares[row][col].threatened?(white_king)
-        p safe_moves?(white_king)
-        p enclosed?(white_king)
-        p safe_from_threats?(white_king)
         return white_king unless safe_moves?(white_king) ||
           enclosed?(white_king) ||
           safe_from_threats?(white_king)
@@ -98,15 +134,70 @@ module Chess
         row.each do |square|
           next if square.contents == ' '
           piece = square.contents
-          key = piece.color.to_s + '_' + piece.name.to_s
+          key = "#{piece.color}_#{piece.name}#{piece.position.join unless piece.is_a? King}"
           result[key] = piece
         end
       end
       result
     end
 
+
+    # TODO should be made constant instead of linear time
+    def black_pieces
+      pieces.select { |name, piece| name = name.include?('black')}
+    end
+
+    def white_pieces
+      pieces.select { |name, piece| name = name.include?('white')}
+    end
+
+    def black_threatened
+      black_pieces.select do |name, piece|
+        @squares[piece.position[0]][piece.position[1]].threatened?(piece)
+      end
+    end
+
+    def white_threatened
+      white_pieces.select do |name, piece|
+        @squares[piece.position[0]][piece.position[1]].threatened?(piece)
+      end
+    end
+
     def winner
-      pieces['black_king'].nil? ? pieces['white_king'] : pieces['black_king']
+      # pieces['black_king'].nil? ? pieces['white_king'] : pieces['black_king']
+      if pieces['black_king'].nil?
+        pieces['white_king']
+      elsif pieces['white_king'].nil?
+        pieces['black_king']
+      elsif check_mate? == pieces['black_king']
+        pieces['white_king']
+      else
+        pieces['black_king']
+      end
+    end
+
+    # returns a value representing the 'goodness' of the board for the given
+    # player
+    def evaluate(player)
+      result = 0
+      if check_mate?
+        result +=  100 if check_mate?.color == player.enemy_color
+        result -= 100 if check_mate?.color != player.enemy_color
+      elsif checked?
+        result +=  50 if checked?.color == player.enemy_color
+        result -= 50 if checked?.color != player.enemy_color
+      elsif player.color == :black
+        result +=  1 if black_threatened.size < white_threatened.size
+        result += -1 if black_threatened.size > white_threatened.size
+        result +=  3 if black_pieces.size    > white_pieces.size
+        result += -3 if black_pieces.size    < white_pieces.size
+      elsif player.color == :white
+        result +=  1 if black_threatened.size > white_threatened.size
+        result += -1 if black_threatened.size < white_threatened.size
+        result +=  3 if black_pieces.size > white_pieces.size
+        result += -3 if black_pieces.size < white_pieces.size
+      end
+      result
     end
 
     def to_s
@@ -114,7 +205,43 @@ module Chess
       ''
     end
 
-    private
+    def minimax(d, a, b, mini, maxi, max)
+      return [evaluate(maxi)] if d == 0
+      v             = max ? -1.0/0.0 : 1.0/0.0
+      best_piece    = nil
+      best_position = nil
+      player = max ? maxi : mini
+      player_pieces = player.color == :black ? black_pieces : white_pieces
+      player_pieces.values.shuffle.each do |piece|
+        piece.moves.each do |position|
+          begin
+            temp_board = move(piece.position, position, player)
+          rescue MoveError
+            next
+          end
+          if max
+            v = [v, temp_board.minimax(d - 1, a, b, mini, maxi, false)[0]].max
+            if v > a
+              a = v
+              best_piece = piece
+              best_position  = position
+            end
+          else
+            v = [v, temp_board.minimax(d - 1, a, b, mini, maxi, true)[0]].min
+            if v < b
+              b = v
+              best_piece = piece
+              best_position  = position
+            end
+          end
+          break if b <= a
+        end
+        break if b <= a
+      end
+      [v, best_piece, best_position]
+    end
+
+    protected
 
     # draws the chess board to the std out
     def draw
@@ -153,15 +280,11 @@ module Chess
     # returns true if a threatened piece's threats can be captured
     def safe_from_threats?(king)
       king_square = @squares[king.position[0]][king.position[1]]
-      puts 'empty threats'
-      p king_square
-      p king_square.enemy_threats
-      p king_square.enemy_threats.empty?
       return true if king_square.enemy_threats.empty?
-      king.moves.all? do |move|
-        square = @squares[move[0]][move[1]]
+      king.moves.all? do |position|
+        square = @squares[position[0]][position[1]]
         next unless square.empty?
-        square.threats.any? { |t| t.color == king.color }
+        square.threats.any? { |threat| threat.color == king.color }
       end
       king_square.enemy_threats.all? do |threat|
         square = @squares[threat.position[0]][threat.position[1]]

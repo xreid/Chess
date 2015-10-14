@@ -1,36 +1,24 @@
 # Chess
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/chess`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+Welcome to Chess. This is a Command Line chess game written in Ruby as an exercise in object oriented design and algorithm design.
 
 ## Installation
 
-Add this line to your application's Gemfile:
+Clone the repository, and in the root directory of the project run:
 
-```ruby
-gem 'chess'
-```
+    $ rake install
 
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
-
-    $ gem install chess
 
 ## Usage
 
-TODO: Write usage instructions here
+To start the game, run:
 
-## Development
+    $ chess
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake false` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
 
-## Contributing
+## What I've Learned From This Project
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/chess.
+Although I am now working on some larger projects for school, when I started development on this project, it was the largest project I had ever taken on. Prior to this project (and in the beginning of this project), I would often just start writing code instead of designing classes and figuring out how they should all interact with each other. From this project I now know first hand that this practice results in spaghetti code and a lot of refactoring. That being said, this project needs some major refactoring.
 
+All methods related to moving a chess piece need to be optimized in order to increase the effectiveness of the minimax algorithm, and sloppy code needs to be cleaned up and documented.

@@ -12,5 +12,12 @@ module Chess
       @name.to_s
     end
 
+    def enemy_color
+      case @color
+      when :black then :white
+      when :white then :black
+      end
+    end
+
   end
 end
