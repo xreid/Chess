@@ -249,7 +249,7 @@ module Chess
     end
 
     def minimize(d, a, b, max_player, min_player)
-      return evaluate(min_player) if d == 0 || check_mate?
+      return evaluate(max_player) if d == 0 || check_mate?
       player_pieces = min_player.color == :black ? black_pieces : white_pieces
       player_pieces.values.each do |piece|
         piece.moves.each do |position|
