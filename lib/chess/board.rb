@@ -87,11 +87,9 @@ module Chess
       # TODO timer should be within minimax
       until Time.now - start_time > 3
         print " . "
-        result = minimax(depth, -1.0/0.0, 1.0/0.0, player, ai_player, true)
-        # puts "\n"
-        # puts result
-        best_piece = result[1]
-        best_move = result[2]
+        result = minimax(depth, -1.0/0.0, 1.0/0.0, ai_player, player)
+        best_piece = result[0]
+        best_move = result[1]
         depth += 1
       end
       move!(best_piece.position, best_move, ai_player)
@@ -205,40 +203,67 @@ module Chess
       ''
     end
 
-    def minimax(d, a, b, mini, maxi, max)
-      return [evaluate(maxi)] if d == 0
-      v             = max ? -1.0/0.0 : 1.0/0.0
-      best_piece    = nil
+    # Returns the best piece and the best position for that piece to move to
+    # +d+:: The depth at which to search.
+    # +a+:: Alpha. The best value found for the max player.
+    # +b+:: Beta. The best value found for the min player
+    def minimax(d, a, b, max_player, min_player)
+      best_score = -1.0 / 0.0
+      best_piece = nil
       best_position = nil
-      player = max ? maxi : mini
-      player_pieces = player.color == :black ? black_pieces : white_pieces
-      player_pieces.values.shuffle.each do |piece|
+      player_pieces = max_player.color == :black ? black_pieces : white_pieces
+      player_pieces.values.each do |piece|
         piece.moves.each do |position|
           begin
-            temp_board = move(piece.position, position, player)
+            temp_board = move(piece.position, position, max_player)
           rescue MoveError
             next
           end
-          if max
-            v = [v, temp_board.minimax(d - 1, a, b, mini, maxi, false)[0]].max
-            if v > a
-              a = v
-              best_piece = piece
-              best_position  = position
-            end
-          else
-            v = [v, temp_board.minimax(d - 1, a, b, mini, maxi, true)[0]].min
-            if v < b
-              b = v
-              best_piece = piece
-              best_position  = position
-            end
+          score = temp_board.maximize(d - 1, a, b, max_player, min_player)
+          if score > best_score
+            best_score = score
+            best_position = position
+            best_piece = piece
           end
-          break if b <= a
         end
-        break if b <= a
       end
-      [v, best_piece, best_position]
+      [best_piece, best_position]
+    end
+
+    def maximize(d, a, b, max_player, min_player)
+      return evaluate(max_player) if d == 0 || check_mate?
+      player_pieces = max_player.color == :black ? black_pieces : white_pieces
+      player_pieces.values.each do |piece|
+        piece.moves.each do |position|
+          begin
+            temp_board = move(piece.position, position, max_player)
+          rescue MoveError
+            next
+          end
+          v = temp_board.minimize(d - 1, a, b, max_player, min_player)
+          a = [a, v].max
+          return a if v <= a
+        end
+      end
+      a
+    end
+
+    def minimize(d, a, b, max_player, min_player)
+      return evaluate(min_player) if d == 0 || check_mate?
+      player_pieces = min_player.color == :black ? black_pieces : white_pieces
+      player_pieces.values.each do |piece|
+        piece.moves.each do |position|
+          begin
+            temp_board = move(piece.position, position, min_player)
+          rescue MoveError
+            next
+          end
+          v = temp_board.maximize(d - 1, a, b, max_player, min_player)
+          b = [b, v].min
+          return b if v >= b
+        end
+      end
+      b
     end
 
     protected
@@ -304,14 +329,14 @@ module Chess
           else
            if @squares[row][col].empty? || !([:top, :bottom].include?(direction))
               @squares[row][col].threats << piece
-            end
+           end
           end
           break unless @squares[row][col].empty? unless piece.is_a? Knight
         end
       end
     end
 
-    # Removes piece from the threats attribure of any square it threatens
+    # Removes piece from the threats attribute of any square it threatens
     def remove_threats(piece)
       row, col = piece.position
       @squares[row][col].threats -= [piece]
@@ -413,7 +438,7 @@ module Chess
       ]
     end
 
-    # Fails all errors fot #move
+    # Fails all errors for #move
     def fail_move_errors(position_1, position_2, player)
       direction           = move_direction(position_1, position_2)
       piece               = (@squares[position_1[0]][position_1[1]]).contents
